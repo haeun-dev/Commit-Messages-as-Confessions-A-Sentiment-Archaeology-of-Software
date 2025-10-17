@@ -1,0 +1,49 @@
+name: "CodeMood Analysis"
+description: "Analyze code mood from git repository commits"
+author: "codemood team"
+
+inputs:
+  repo-path:
+    description: "Path to git repository"
+    required: false
+    default: "."
+
+  output-dir:
+    description: "Output directory for results"
+    required: false
+    default: "./codemood_output"
+
+  limit:
+    description: "Maximum number of commits to analyze"
+    required: false
+    default: "100"
+
+  model:
+    description: "Sentiment analysis model to use"
+    required: false
+    default: "huggingface"
+
+  model-name:
+    description: "Specific model name (optional)"
+    required: false
+
+  verbose:
+    description: "Enable verbose logging"
+    required: false
+    default: "false"
+
+outputs:
+  summary-path:
+    description: "Path to analysis summary"
+  timeline-path:
+    description: "Path to sentiment timeline visualization"
+  distribution-path:
+    description: "Path to sentiment distribution chart"
+  wordcloud-path:
+    description: "Path to word cloud visualization"
+  heatmap-path:
+    description: "Path to author sentiment heatmap"
+
+runs:
+  using: "docker"
+  image: "Dockerfile"
