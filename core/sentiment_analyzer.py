@@ -104,6 +104,18 @@ class SentimentAnalyzer:
                     
                     sentiment = label_mapping.get(best_result['label'], 'NEUTRAL')
                     
+                    # Apply confidence threshold to avoid everything being neutral
+                    confidence = best_result['score']
+                    if confidence < 0.6:  # If confidence is low, try to be more decisive
+                        # Look at the difference between top two scores
+                        if isinstance(results, list) and len(results) > 0:
+                            if isinstance(results[0], list) and len(results[0]) > 1:
+                                top_score = results[0][0]['score']
+                                second_score = results[0][1]['score']
+                                if top_score - second_score < 0.1:  # Very close scores
+                                    # Use keyword-based sentiment as tiebreaker
+                                    sentiment = self._keyword_based_sentiment(text)
+                    
                     return {
                         'text': text,
                         'sentiment': sentiment,
@@ -250,3 +262,33 @@ Commit message: {text}"""
     def reset_cost_tracker(self):
         """Reset cost tracking."""
         self._cost_tracker = {"tokens_used": 0, "cost": 0.0}
+    
+    def _keyword_based_sentiment(self, text: str) -> str:
+        """Fallback keyword-based sentiment analysis."""
+        text_lower = text.lower()
+        
+        # Positive keywords
+        positive_keywords = [
+            'fix', 'add', 'implement', 'improve', 'enhance', 'optimize', 'refactor',
+            'update', 'upgrade', 'feature', 'new', 'support', 'enable', 'resolve',
+            'complete', 'finish', 'done', 'success', 'working', 'stable', 'clean',
+            'better', 'faster', 'improved', 'enhanced', 'optimized', 'great', 'good'
+        ]
+        
+        # Negative keywords  
+        negative_keywords = [
+            'bug', 'error', 'fix', 'broken', 'issue', 'problem', 'crash', 'fail',
+            'remove', 'delete', 'disable', 'deprecate', 'hack', 'workaround',
+            'temporary', 'ugly', 'messy', 'dirty', 'hacky', 'terrible', 'awful',
+            'frustrating', 'annoying', 'stupid', 'dumb', 'sucks', 'hate'
+        ]
+        
+        positive_count = sum(1 for keyword in positive_keywords if keyword in text_lower)
+        negative_count = sum(1 for keyword in negative_keywords if keyword in text_lower)
+        
+        if positive_count > negative_count:
+            return 'POSITIVE'
+        elif negative_count > positive_count:
+            return 'NEGATIVE'
+        else:
+            return 'NEUTRAL'

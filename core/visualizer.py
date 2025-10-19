@@ -265,13 +265,26 @@ class Visualizer:
                     continue
         
         if dates:
-            ax.scatter(dates, sentiments, alpha=0.6, s=50, c=confidences, 
-                      cmap='RdYlGn', edgecolors='black', linewidth=0.5)
+            # Check if we have variation in sentiment
+            unique_sentiments = set(sentiments)
+            if len(unique_sentiments) > 1:
+                # Normal timeline with variation
+                ax.scatter(dates, sentiments, alpha=0.6, s=50, c=confidences, 
+                          cmap='RdYlGn', edgecolors='black', linewidth=0.5)
+                ax.set_yticks([-1, 0, 1])
+                ax.set_yticklabels(['Negative', 'Neutral', 'Positive'])
+            else:
+                # All neutral - show as a line with confidence variation
+                ax.plot(dates, sentiments, 'o-', alpha=0.7, markersize=4, color='gold')
+                ax.fill_between(dates, [s-0.1 for s in sentiments], [s+0.1 for s in sentiments], 
+                               alpha=0.3, color='gold')
+                ax.set_ylim(-0.2, 0.2)
+                ax.set_yticks([0])
+                ax.set_yticklabels(['Neutral'])
+            
             ax.set_xlabel('Date')
             ax.set_ylabel('Sentiment')
             ax.set_title('Sentiment Timeline')
-            ax.set_yticks([-1, 0, 1])
-            ax.set_yticklabels(['Negative', 'Neutral', 'Positive'])
             ax.grid(True, alpha=0.3)
     
     def _plot_sentiment_distribution(self, commits: List[Dict[str, Any]], ax) -> None:
@@ -283,17 +296,32 @@ class Visualizer:
                 sentiment = commit['sentiment'].get('sentiment', 'NEUTRAL')
                 sentiment_counts[sentiment] += 1
         
-        labels = list(sentiment_counts.keys())
-        sizes = list(sentiment_counts.values())
-        colors = ['#2E8B57', '#FFD700', '#DC143C']
+        # Check if we have variation
+        non_zero_counts = [count for count in sentiment_counts.values() if count > 0]
         
-        wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, 
-                                         autopct='%1.1f%%', startangle=90)
-        ax.set_title('Sentiment Distribution')
-        
-        for autotext in autotexts:
-            autotext.set_color('white')
-            autotext.set_fontweight('bold')
+        if len(non_zero_counts) > 1:
+            # Normal pie chart with multiple sentiments
+            labels = list(sentiment_counts.keys())
+            sizes = list(sentiment_counts.values())
+            colors = ['#2E8B57', '#FFD700', '#DC143C']
+            
+            wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, 
+                                             autopct='%1.1f%%', startangle=90)
+            ax.set_title('Sentiment Distribution')
+            
+            for autotext in autotexts:
+                autotext.set_color('white')
+                autotext.set_fontweight('bold')
+        else:
+            # All one sentiment - show as a single colored circle with text
+            total_commits = sum(sentiment_counts.values())
+            sentiment_type = [k for k, v in sentiment_counts.items() if v > 0][0]
+            
+            colors = {'POSITIVE': '#2E8B57', 'NEUTRAL': '#FFD700', 'NEGATIVE': '#DC143C'}
+            
+            ax.pie([total_commits], labels=[sentiment_type], colors=[colors[sentiment_type]], 
+                   autopct='%1.1f%%', startangle=90)
+            ax.set_title(f'Sentiment Distribution\n(All {sentiment_type.lower()})')
     
     def _plot_word_cloud(self, commits: List[Dict[str, Any]], ax) -> None:
         """Plot word cloud on given axis."""
@@ -301,6 +329,17 @@ class Visualizer:
         for commit in commits:
             if 'keywords' in commit:
                 all_keywords.extend(commit['keywords'])
+        
+        # If no keywords, use cleaned commit messages
+        if not all_keywords:
+            for commit in commits:
+                if 'cleaned_message' in commit:
+                    # Split into words and filter out common words
+                    words = commit['cleaned_message'].lower().split()
+                    # Filter out very short words and common words
+                    filtered_words = [w for w in words if len(w) > 2 and w not in 
+                                    ['the', 'and', 'or', 'but', 'for', 'with', 'from', 'this', 'that']]
+                    all_keywords.extend(filtered_words)
         
         if all_keywords:
             text = ' '.join(all_keywords)
@@ -315,8 +354,8 @@ class Visualizer:
             ax.imshow(wordcloud, interpolation='bilinear')
             ax.set_title('Most Common Words')
         else:
-            ax.text(0.5, 0.5, 'No keywords found', ha='center', va='center', 
-                   transform=ax.transAxes)
+            ax.text(0.5, 0.5, 'No text data available', ha='center', va='center', 
+                   transform=ax.transAxes, fontsize=12)
             ax.set_title('Most Common Words')
         
         ax.axis('off')
@@ -345,20 +384,36 @@ class Visualizer:
             neutral_counts = [data['NEUTRAL'] for _, data in sorted_authors]
             negative_counts = [data['NEGATIVE'] for _, data in sorted_authors]
             
-            x = range(len(authors))
-            width = 0.25
+            # Check if we have variation in sentiment
+            has_variation = any(positive_counts) or any(negative_counts)
             
-            ax.bar([i - width for i in x], positive_counts, width, label='Positive', color='#2E8B57')
-            ax.bar(x, neutral_counts, width, label='Neutral', color='#FFD700')
-            ax.bar([i + width for i in x], negative_counts, width, label='Negative', color='#DC143C')
+            if has_variation:
+                # Normal stacked bar chart
+                x = range(len(authors))
+                width = 0.6
+                
+                ax.bar(x, positive_counts, width, label='Positive', color='#2E8B57', bottom=[0]*len(authors))
+                ax.bar(x, neutral_counts, width, label='Neutral', color='#FFD700', 
+                      bottom=positive_counts)
+                ax.bar(x, negative_counts, width, label='Negative', color='#DC143C',
+                      bottom=[p+n for p, n in zip(positive_counts, neutral_counts)])
+                
+                ax.legend()
+            else:
+                # All neutral - show simple bar chart
+                x = range(len(authors))
+                width = 0.6
+                
+                ax.bar(x, neutral_counts, width, color='#FFD700', label='Neutral')
+                ax.set_title('Commits by Author\n(All Neutral)')
             
             ax.set_xlabel('Authors')
             ax.set_ylabel('Commit Count')
-            ax.set_title('Sentiment by Author')
+            if has_variation:
+                ax.set_title('Sentiment by Author')
             ax.set_xticks(x)
             ax.set_xticklabels(authors, rotation=45, ha='right')
-            ax.legend()
         else:
             ax.text(0.5, 0.5, 'No author data', ha='center', va='center', 
-                   transform=ax.transAxes)
+                   transform=ax.transAxes, fontsize=12)
             ax.set_title('Sentiment by Author')
