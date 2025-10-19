@@ -269,6 +269,7 @@ tmp/
 # Configuration files with sensitive data
 config.json
 secrets.json
+.env
 .env.local
 .env.production
 

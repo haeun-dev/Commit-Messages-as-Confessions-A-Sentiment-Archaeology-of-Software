@@ -69,6 +69,24 @@ def main():
     )
     
     parser.add_argument(
+        "--api-key",
+        type=str,
+        help="API key for paid models (e.g., OpenAI). Can also be set via OPENAI_API_KEY environment variable"
+    )
+    
+    parser.add_argument(
+        "--organization",
+        type=str,
+        help="Organization ID for OpenAI API (optional)"
+    )
+    
+    parser.add_argument(
+        "--show-costs",
+        action="store_true",
+        help="Show cost tracking information for paid models"
+    )
+    
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable verbose logging"
@@ -88,6 +106,9 @@ def main():
                 limit=args.limit,
                 model_type=args.model,
                 model_name=args.model_name,
+                api_key=args.api_key,
+                organization=args.organization,
+                show_costs=args.show_costs,
                 generate_visualizations=args.visualize,
                 logger=logger
             )
@@ -112,6 +133,9 @@ def analyze_repository(
     limit: int,
     model_type: str,
     model_name: Optional[str],
+    api_key: Optional[str],
+    organization: Optional[str],
+    show_costs: bool,
     generate_visualizations: bool,
     logger
 ):
@@ -124,7 +148,12 @@ def analyze_repository(
     
     # Initialize components
     git_extractor = GitExtractor(repo_path)
-    sentiment_analyzer = SentimentAnalyzer(model_type, model_name)
+    sentiment_analyzer = SentimentAnalyzer(
+        model_type=model_type, 
+        model_name=model_name,
+        api_key=api_key,
+        organization=organization
+    )
     preprocessor = Preprocessor()
     visualizer = Visualizer()
     
@@ -202,9 +231,15 @@ def analyze_repository(
     
     print(f"🧠 Average sentiment: {avg_sentiment:.2f} ({mood})")
     
+    # Show cost information if requested
+    if show_costs and model_type == "openai":
+        cost_info = sentiment_analyzer.get_cost_info()
+        print(f"💰 Cost tracking - Tokens used: {cost_info['tokens_used']}, "
+              f"Estimated cost: ${cost_info['estimated_cost']:.4f}")
+    
     # Generate JSON report
     generate_json_report(analyzed_commits, repo_stats, all_comments, all_functions, 
-                        avg_sentiment, output_path, logger)
+                        avg_sentiment, output_path, logger, sentiment_analyzer if show_costs else None)
     
     # Generate visualizations
     if generate_visualizations:
@@ -215,7 +250,7 @@ def analyze_repository(
     logger.info(f"Analysis complete! Results saved to: {output_path}")
 
 
-def generate_json_report(commits, repo_stats, comments, functions, avg_sentiment, output_path: Path, logger):
+def generate_json_report(commits, repo_stats, comments, functions, avg_sentiment, output_path: Path, logger, sentiment_analyzer=None):
     """Generate comprehensive JSON report."""
     report_path = output_path / "codemood_report.json"
     
@@ -265,6 +300,7 @@ def generate_json_report(commits, repo_stats, comments, functions, avg_sentiment
             "mood_category": mood_category,
             "mood_description": mood_description
         },
+        "cost_tracking": sentiment_analyzer.get_cost_info() if sentiment_analyzer else None,
         "sentiment_distribution": sentiment_counts,
         "top_insights": {
             "most_positive_commits": [

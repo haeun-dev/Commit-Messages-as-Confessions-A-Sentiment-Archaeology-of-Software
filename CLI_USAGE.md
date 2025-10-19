@@ -64,13 +64,49 @@ python3 -m cli.main analyze . --output-dir ./my_results
 
 ### Supported File Types
 
-The tool can extract functions and comments from:
+The tool can extract functions and comments from a wide range of programming languages:
+
+**Core Languages:**
 
 - Python (`.py`)
 - JavaScript/TypeScript (`.js`, `.ts`, `.jsx`, `.tsx`)
 - Java (`.java`)
-- C/C++ (`.c`, `.cpp`, `.h`)
-- And many more programming languages
+- C/C++ (`.c`, `.cpp`, `.h`, `.hpp`)
+- C# (`.cs`)
+- Go (`.go`)
+- Rust (`.rs`)
+- PHP (`.php`)
+- Ruby (`.rb`)
+- Swift (`.swift`)
+- Kotlin (`.kt`)
+- Scala (`.scala`)
+
+**Additional Languages:**
+
+- R (`.r`)
+- MATLAB/Objective-C (`.m`)
+- Perl (`.pl`)
+- Shell Scripts (`.sh`, `.bash`, `.zsh`, `.fish`)
+- PowerShell (`.ps1`)
+- SQL (`.sql`)
+- Lua (`.lua`)
+- Dart (`.dart`)
+
+**Web Technologies:**
+
+- HTML (`.html`, `.htm`)
+- Vue.js (`.vue`)
+- Svelte (`.svelte`)
+- Astro (`.astro`)
+
+**Configuration Files:**
+
+- YAML (`.yaml`, `.yml`)
+- JSON (`.json`)
+- TOML (`.toml`)
+- XML (`.xml`)
+- INI (`.ini`)
+- And many more...
 
 ### Tips
 
